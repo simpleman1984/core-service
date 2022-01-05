@@ -312,26 +312,31 @@ func (s *Signaler) HandleNewWebSocket(conn *websocket.WebSocketConn, request *ht
 
 	conn.On("close", func(code int, text string) {
 		logger.Infof("On Close %v", conn)
-		var peerID string = ""
+		var closePeerID string = ""
 
 		for _, peer := range s.peers {
 			if peer.conn == conn {
-				peerID = peer.info.ID
-			} else {
+				closePeerID = peer.info.ID
+				break
+			}
+		}
+
+		for _, peer := range s.peers {
+			if closePeerID != peer.info.ID {
 				leave := Request{
 					Type: "leave",
-					Data: peer.info.ID,
+					Data: closePeerID,
 				}
 				s.Send(peer.conn, leave)
 			}
 		}
 
-		logger.Infof("Remove peer %s", peerID)
-		if peerID == "" {
+		logger.Infof("Remove peer %s", closePeerID)
+		if closePeerID == "" {
 			logger.Infof("Leve peer id not found")
 			return
 		}
-		delete(s.peers, peerID)
+		delete(s.peers, closePeerID)
 
 		s.NotifyPeersUpdate(conn, s.peers)
 	})
